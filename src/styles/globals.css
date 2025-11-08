@@ -1,0 +1,264 @@
+/* AI Chat Demo Styles */
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+.ai-chat-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+}
+
+/* Question Input Section */
+.question-section {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.question-input {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.question-input:focus {
+  border-color: #007AFF;
+}
+
+.ask-button {
+  padding: 12px 24px;
+  background: #007AFF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ask-button:hover {
+  background: #0056CC;
+}
+
+/* Thinking Panel */
+.thinking-panel {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  overflow: hidden;
+}
+
+.thinking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #e9ecef;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.toggle-thinking {
+  background: none;
+  border: 1px solid #6c757d;
+  color: #6c757d;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.toggle-thinking:hover {
+  background: #6c757d;
+  color: white;
+}
+
+.thought-stream {
+  position: relative;
+  padding: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.thought-item {
+  padding: 8px 0;
+  color: #495057;
+  font-size: 14px;
+  line-height: 1.5;
+  border-left: 3px solid #007AFF;
+  padding-left: 12px;
+  margin-bottom: 8px;
+  opacity: 0;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+.thinking-indicator {
+  color: #007AFF;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Gradient Overlay */
+.gradient-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(transparent, #f8f9fa);
+  pointer-events: none;
+}
+
+/* Final Answer */
+.final-answer {
+  background: #e8f5e8;
+  border: 1px solid #c3e6c3;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 20px;
+}
+
+.final-answer h3 {
+  margin: 0 0 12px 0;
+  color: #2d5a2d;
+}
+
+.final-answer p {
+  margin: 0;
+  color: #333;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+.answer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cache-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff3cd;
+  color: #856404;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #ffeaa7;
+}
+
+/* Suggested Questions */
+.suggested-questions {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.suggestions-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.suggestions-icon {
+  font-size: 18px;
+}
+
+.suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.suggestion-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+  opacity: 0;
+  animation: slideIn 0.4s ease forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.suggestion-chip:hover {
+  background: white;
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.suggestion-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Error Display */
+.error-message {
+  background: #f8d7da;
+  border: 1px solid #f5c2c7;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+  color: #842029;
+}
