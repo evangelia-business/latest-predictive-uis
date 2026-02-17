@@ -39,8 +39,12 @@ export const useServerSentEvents = () => {
     };
 
     eventSource.onerror = (event) => {
-      console.error('SSE error:', event);
-      setError(new Error('Connection failed'));
+      // readyState CLOSED means the stream ended (normal after server sends complete)
+      // readyState CONNECTING means an actual connection failure
+      if (eventSource.readyState === EventSource.CONNECTING) {
+        console.error('SSE connection error:', event);
+        setError(new Error('Connection failed'));
+      }
       setIsConnected(false);
       eventSource.close();
       eventSourceRef.current = null;

@@ -82,11 +82,10 @@ export const useAIChat = () => {
   const handleComplete = useCallback(
     async (data) => {
       dispatch({ type: "COMPLETE", payload: data.answer });
+      disconnect();
 
       const updatedHistory = addToHistory(question, data.answer);
       await updateSuggestionsAfterAnswer(question, data.answer, updatedHistory);
-
-      disconnect();
     },
     [question, addToHistory, disconnect]
   );

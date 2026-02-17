@@ -47,8 +47,36 @@ function createSSEHeaders() {
   return headers;
 }
 
-function sendSSEMessage(controller, data) {
-  controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
+function createSafeEnqueue(controller, flags) {
+  return (data) => {
+    if (!flags.isClosed && !flags.isComplete) {
+      try {
+        controller.enqueue(data);
+      } catch (error) {
+        console.error('Enqueue error:', error.message);
+        flags.isClosed = true;
+      }
+    }
+  };
+}
+
+function sendSSEMessage(safeEnqueue, data) {
+  safeEnqueue(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function closeStream(controller, flags) {
+  flags.isComplete = true;
+  setTimeout(() => {
+    if (!flags.isClosed) {
+      try {
+        controller.close();
+        flags.isClosed = true;
+      } catch (error) {
+        console.log('Controller already closed:', error.message);
+        flags.isClosed = true;
+      }
+    }
+  }, 100);
 }
 
 function extractThinkingSteps(text) {
@@ -69,7 +97,7 @@ function extractAnswer(text) {
 // Ollama Streaming
 // ============================================================================
 
-async function streamFromOllama(question, controller) {
+async function streamFromOllama(question, safeEnqueue, flags) {
   const ollamaStream = await ollama.chat({
     model: 'llama3.2',
     messages: [
@@ -85,6 +113,8 @@ async function streamFromOllama(question, controller) {
   let lastThinkingCount = 0;
 
   for await (const chunk of ollamaStream) {
+    if (flags.isComplete || flags.isClosed) break;
+
     fullResponse += chunk.message?.content || '';
 
     // Just switched to answer section
@@ -92,7 +122,7 @@ async function streamFromOllama(question, controller) {
       currentSection = 'answer';
 
       const thinkingSteps = extractThinkingSteps(fullResponse);
-      sendSSEMessage(controller, {
+      sendSSEMessage(safeEnqueue, {
         type: 'thinking',
         thoughts: thinkingSteps,
         step: thinkingSteps.length,
@@ -101,7 +131,7 @@ async function streamFromOllama(question, controller) {
 
       const answer = extractAnswer(fullResponse);
       if (answer) {
-        sendSSEMessage(controller, { type: 'streaming', answer });
+        sendSSEMessage(safeEnqueue, { type: 'streaming', answer });
       }
     }
     // Still building thinking steps
@@ -109,7 +139,7 @@ async function streamFromOllama(question, controller) {
       const thinkingSteps = extractThinkingSteps(fullResponse);
       if (thinkingSteps.length > lastThinkingCount) {
         lastThinkingCount = thinkingSteps.length;
-        sendSSEMessage(controller, {
+        sendSSEMessage(safeEnqueue, {
           type: 'thinking',
           thoughts: thinkingSteps,
           step: thinkingSteps.length,
@@ -120,13 +150,13 @@ async function streamFromOllama(question, controller) {
     // Streaming the answer
     else {
       const answer = extractAnswer(fullResponse);
-      sendSSEMessage(controller, { type: 'streaming', answer });
+      sendSSEMessage(safeEnqueue, { type: 'streaming', answer });
     }
   }
 
   // Send final message
   const finalAnswer = extractAnswer(fullResponse) || fullResponse;
-  sendSSEMessage(controller, { type: 'complete', answer: finalAnswer });
+  sendSSEMessage(safeEnqueue, { type: 'complete', answer: finalAnswer });
 }
 
 // ============================================================================
@@ -151,7 +181,7 @@ function generateFallbackAnswer(question) {
   return `Thank you for asking "${question}". Based on my analysis, I've considered multiple perspectives and approaches. The key insights are: 1) Context and specifics matter greatly, 2) There are often multiple valid approaches, and 3) The best solution depends on your particular circumstances and goals.`;
 }
 
-async function streamFallbackResponse(question, controller) {
+async function streamFallbackResponse(question, safeEnqueue, flags) {
   const steps = [
     `Analyzing the question: "${question}"`,
     ...FALLBACK_THINKING_STEPS.slice(0, 6),
@@ -162,8 +192,10 @@ async function streamFallbackResponse(question, controller) {
   const currentThoughts = [];
 
   for (let i = 0; i < steps.length; i++) {
+    if (flags.isComplete || flags.isClosed) break;
+
     currentThoughts.push(steps[i]);
-    sendSSEMessage(controller, {
+    sendSSEMessage(safeEnqueue, {
       type: 'thinking',
       thoughts: [...currentThoughts],
       step: i + 1,
@@ -173,7 +205,7 @@ async function streamFallbackResponse(question, controller) {
   }
 
   const answer = generateFallbackAnswer(question);
-  sendSSEMessage(controller, { type: 'complete', answer });
+  sendSSEMessage(safeEnqueue, { type: 'complete', answer });
 }
 
 // ============================================================================
@@ -189,20 +221,20 @@ async function isOllamaAvailable() {
   }
 }
 
-async function handleStreaming(question, controller) {
+async function handleStreaming(question, safeEnqueue, flags) {
   const available = await isOllamaAvailable();
 
   if (!available) {
     console.log('Ollama not available, using fallback');
-    await streamFallbackResponse(question, controller);
+    await streamFallbackResponse(question, safeEnqueue, flags);
     return;
   }
 
   try {
-    await streamFromOllama(question, controller);
+    await streamFromOllama(question, safeEnqueue, flags);
   } catch (streamError) {
     console.error('Ollama streaming failed:', streamError.message);
-    await streamFallbackResponse(question, controller);
+    await streamFallbackResponse(question, safeEnqueue, flags);
   }
 }
 
@@ -215,27 +247,22 @@ export async function GET(req) {
   const url = new URL(req.url);
   const question = url.searchParams.get('question') || 'general inquiry';
 
+  const flags = { isComplete: false, isClosed: false };
+
   const stream = new ReadableStream({
     async start(controller) {
+      const safeEnqueue = createSafeEnqueue(controller, flags);
+
       try {
-        await handleStreaming(question, controller);
-        setTimeout(() => {
-          try {
-            controller.close();
-          } catch (error) {
-            console.log('Controller already closed:', error.message);
-          }
-        }, 100);
+        await handleStreaming(question, safeEnqueue, flags);
       } catch (error) {
         console.error('Stream error:', error);
-        try {
-          controller.error(error);
-        } catch {
-          console.log('Controller already errored or closed');
-        }
+      } finally {
+        closeStream(controller, flags);
       }
     },
     cancel() {
+      flags.isComplete = true;
       console.log('Stream cancelled by client');
     }
   });
