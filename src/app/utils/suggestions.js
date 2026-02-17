@@ -4,7 +4,7 @@
  * Fetches AI-generated suggestions from the API
  */
 export async function generateAISuggestions(context = {}) {
-  const { previousQuestion, previousAnswer, hasAskedBefore } = context;
+  const { previousQuestion, previousAnswer, conversationHistory, hasAskedBefore } = context;
 
   try {
     // If no previous context, get initial suggestions
@@ -33,7 +33,7 @@ export async function generateAISuggestions(context = {}) {
       body: JSON.stringify({
         previousQuestion,
         previousAnswer,
-        conversationHistory: [] // Could expand this to include full history
+        conversationHistory: conversationHistory || []
       }),
     });
 
